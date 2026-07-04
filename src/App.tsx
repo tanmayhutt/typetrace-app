@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Keyboard, LayoutDashboard, Type } from 'lucide-react';
+import { LayoutDashboard, Type } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { TypingTest } from './components/TypingTest';
 import './App.css';

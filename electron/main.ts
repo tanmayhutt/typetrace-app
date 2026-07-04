@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { uIOhook } from 'uiohook-napi';
@@ -16,6 +16,8 @@ const store = new Store({
 });
 
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -35,6 +37,45 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // Prevent app from quitting when the window is closed, just hide it
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+}
+
+function createTray() {
+  const iconPath = path.join(__dirname, '../build/icon.png');
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  
+  tray = new Tray(icon);
+  tray.setToolTip('TypeTrace');
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Open Dashboard', 
+      click: () => {
+        mainWindow?.show();
+      }
+    },
+    { type: 'separator' },
+    { 
+      label: 'Quit', 
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('click', () => {
+    mainWindow?.show();
+  });
 }
 
 // Typing speed state
@@ -47,16 +88,18 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else {
+      mainWindow?.show();
     }
   });
 
+  createTray();
   setupKeylogger();
 });
 
+// We no longer quit when all windows are closed, because we want it to run in the background
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  // Do nothing to keep the app running in the tray
 });
 
 function setupKeylogger() {
